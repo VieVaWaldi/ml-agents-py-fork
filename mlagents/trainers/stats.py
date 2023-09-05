@@ -16,6 +16,45 @@ from mlagents.torch_utils.globals import get_rank
 
 logger = get_logger(__name__)
 
+from mlagents_envs.side_channel import SideChannel, IncomingMessage, OutgoingMessage
+import uuid
+
+
+class AccuracySideChannel(SideChannel):
+    _instance = None
+    _initialized = False
+
+    def __new__(cls, *args, **kwargs):
+        if not cls._instance:
+            cls._instance = super().__new__(cls, *args, **kwargs)
+        return cls._instance
+
+    def __init__(self):
+        if AccuracySideChannel._initialized:
+            return
+        # Use the same UUID as in Unity
+        super().__init__(uuid.UUID("621f0a70-4f87-11eb-a9c3-0242ac130002"))
+        self.last_benchmarks = []
+        AccuracySideChannel._initialized = True
+
+    def on_message_received(self, msg: IncomingMessage) -> None:
+        float_value = msg.read_float32()
+        # print(f"!!!Received float value from Unity: {float_value}")
+        self.last_benchmarks.append(float_value)
+        while len(self.last_benchmarks) > 5:
+            self.last_benchmarks.pop(0)
+
+    def send_float(self, value: float) -> None:
+        msg = OutgoingMessage()
+        msg.write_float32(value)
+        self.queue_message_to_send(msg)
+
+    def get_avg_accuracy(self):
+        return sum(self.last_benchmarks) / len(self.last_benchmarks) if self.last_benchmarks else 0
+
+
+acc_side_channel = AccuracySideChannel()
+
 
 def _dict_to_str(param_dict: Dict[str, Any], num_tabs: int) -> str:
     """
@@ -83,11 +122,11 @@ class StatsWriter(abc.ABC):
     """
 
     def on_add_stat(
-        self,
-        category: str,
-        key: str,
-        value: float,
-        aggregation: StatsAggregationMethod = StatsAggregationMethod.AVERAGE,
+            self,
+            category: str,
+            key: str,
+            value: float,
+            aggregation: StatsAggregationMethod = StatsAggregationMethod.AVERAGE,
     ) -> None:
         """
         Callback method for handling an individual stat value as reported to the StatsReporter add_stat
@@ -102,7 +141,7 @@ class StatsWriter(abc.ABC):
 
     @abc.abstractmethod
     def write_stats(
-        self, category: str, values: Dict[str, StatsSummary], step: int
+            self, category: str, values: Dict[str, StatsSummary], step: int
     ) -> None:
         """
         Callback to record training information
@@ -114,7 +153,7 @@ class StatsWriter(abc.ABC):
         pass
 
     def add_property(
-        self, category: str, property_type: StatsPropertyType, value: Any
+            self, category: str, property_type: StatsPropertyType, value: Any
     ) -> None:
         """
         Add a generic property to the StatsWriter. This could be e.g. a Dict of hyperparameters,
@@ -141,7 +180,7 @@ class GaugeWriter(StatsWriter):
         return s.replace("/", ".").replace(" ", "")
 
     def write_stats(
-        self, category: str, values: Dict[str, StatsSummary], step: int
+            self, category: str, values: Dict[str, StatsSummary], step: int
     ) -> None:
         for val, stats_summary in values.items():
             set_gauge(
@@ -163,7 +202,7 @@ class ConsoleWriter(StatsWriter):
         self.rank = get_rank()
 
     def write_stats(
-        self, category: str, values: Dict[str, StatsSummary], step: int
+            self, category: str, values: Dict[str, StatsSummary], step: int
     ) -> None:
         is_training = "Not Training"
         if "Is Training" in values:
@@ -175,6 +214,7 @@ class ConsoleWriter(StatsWriter):
         log_info: List[str] = [category]
         log_info.append(f"Step: {step}")
         log_info.append(f"Time Elapsed: {elapsed_time:0.3f} s")
+        log_info.append(f"Acc l5ep: {acc_side_channel.get_avg_accuracy()}")
         if "Environment/Cumulative Reward" in values:
             stats_summary = values["Environment/Cumulative Reward"]
             if self.rank is not None:
@@ -188,16 +228,16 @@ class ConsoleWriter(StatsWriter):
                 log_info.append(f"Std of Reward: {stats_summary.std:0.3f}")
             log_info.append(is_training)
 
-            if self.self_play and "Self-play/ELO" in values:
-                elo_stats = values["Self-play/ELO"]
-                log_info.append(f"ELO: {elo_stats.mean:0.3f}")
+            # if self.self_play and "Self-play/ELO" in values:
+            #     elo_stats = values["Self-play/ELO"]
+            #     log_info.append(f"ELO: {elo_stats.mean:0.3f}")
         else:
             log_info.append("No episode was completed since last summary")
             log_info.append(is_training)
         logger.info(". ".join(log_info) + ".")
 
     def add_property(
-        self, category: str, property_type: StatsPropertyType, value: Any
+            self, category: str, property_type: StatsPropertyType, value: Any
     ) -> None:
         if property_type == StatsPropertyType.HYPERPARAMETERS:
             logger.info(
@@ -212,10 +252,10 @@ class ConsoleWriter(StatsWriter):
 
 class TensorboardWriter(StatsWriter):
     def __init__(
-        self,
-        base_dir: str,
-        clear_past_data: bool = False,
-        hidden_keys: Optional[List[str]] = None,
+            self,
+            base_dir: str,
+            clear_past_data: bool = False,
+            hidden_keys: Optional[List[str]] = None,
     ):
         """
         A StatsWriter that writes to a Tensorboard summary.
@@ -233,7 +273,7 @@ class TensorboardWriter(StatsWriter):
         self.hidden_keys: List[str] = hidden_keys if hidden_keys is not None else []
 
     def write_stats(
-        self, category: str, values: Dict[str, StatsSummary], step: int
+            self, category: str, values: Dict[str, StatsSummary], step: int
     ) -> None:
         self._maybe_create_summary_writer(category)
         for key, value in values.items():
@@ -275,7 +315,7 @@ class TensorboardWriter(StatsWriter):
                     )
 
     def add_property(
-        self, category: str, property_type: StatsPropertyType, value: Any
+            self, category: str, property_type: StatsPropertyType, value: Any
     ) -> None:
         if property_type == StatsPropertyType.HYPERPARAMETERS:
             assert isinstance(value, dict)
@@ -322,10 +362,10 @@ class StatsReporter:
                 writer.add_property(self.category, property_type, value)
 
     def add_stat(
-        self,
-        key: str,
-        value: float,
-        aggregation: StatsAggregationMethod = StatsAggregationMethod.AVERAGE,
+            self,
+            key: str,
+            value: float,
+            aggregation: StatsAggregationMethod = StatsAggregationMethod.AVERAGE,
     ) -> None:
         """
         Add a float value stat to the StatsReporter.

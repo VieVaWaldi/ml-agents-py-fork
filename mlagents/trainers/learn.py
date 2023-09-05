@@ -18,6 +18,7 @@ from mlagents.trainers.directory_utils import (
     setup_init_path,
 )
 from mlagents.trainers.stats import StatsReporter
+from mlagents.trainers.stats import acc_side_channel
 from mlagents.trainers.cli_utils import parser
 from mlagents_envs.environment import UnityEnvironment
 from mlagents.trainers.settings import RunOptions
@@ -184,6 +185,9 @@ def create_environment_factory(
     ) -> UnityEnvironment:
         # Make sure that each environment gets a different seed
         env_seed = seed + worker_id
+        if side_channels is None:
+            side_channels = []
+        side_channels.append(acc_side_channel)
         return UnityEnvironment(
             file_name=env_path,
             worker_id=worker_id,
