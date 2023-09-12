@@ -41,11 +41,11 @@ TRAINING_STATUS_FILE_NAME = "training_status.json"
 
 
 def get_version_string() -> str:
-    return f""" Version information:
+    return print(""" Version information:
   ml-agents: {mlagents.trainers.__version__},
   ml-agents-envs: {mlagents_envs.__version__},
   Communicator API: {UnityEnvironment.API_VERSION},
-  PyTorch: {torch_utils.torch.__version__}"""
+  PyTorch: {torch_utils.torch.__version__}""")
 
 
 def parse_command_line(
@@ -200,6 +200,7 @@ def create_environment_factory(
 
 
 def run_cli(options: RunOptions) -> None:
+    print("(: Forked :)")
     try:
         print(
             """

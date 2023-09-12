@@ -29,6 +29,7 @@ package.
 Rinse and repeat:
 7. Run $ python /trainers/learn.py
 8. Fix damn dependency issues, for me usually 1 or 2 missing installs. Weidly enough not deterministic. Use $ python -m pip install 'package'  
+9. In the directory where mlagents lies (where setup.py is): $ pip install -e . 
 
 Alt: Works suprisingly well if opened with pycharm. It should ask u to create the venv itself and then proceed to install all reqs. Watch out for errors and install missing dependencies on ur own
  

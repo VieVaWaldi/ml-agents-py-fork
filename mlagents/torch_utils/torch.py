@@ -56,7 +56,8 @@ def set_torch_config(torch_settings: TorchSettings) -> None:
     else:
         torch.set_default_tensor_type(torch.FloatTensor)
     logger.debug(f"default Torch device: {_device}")
-
+    
+    print(f"TORCH a {torch.cuda.is_available()}, b {torch.cuda.device_count()}, c {torch.cuda.current_device()}, d {torch.cuda.device(0)}, e {torch.cuda.get_device_name(torch.cuda.current_device())}")
 
 # Initialize to default settings
 set_torch_config(TorchSettings(device=None))
