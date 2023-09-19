@@ -198,6 +198,7 @@ def create_environment_factory(
             additional_args=env_args,
             side_channels=side_channels,
             log_folder=log_folder,
+            timeout_wait=180
         )
 
     return create_unity_environment
